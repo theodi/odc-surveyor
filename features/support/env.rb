@@ -3,13 +3,18 @@
 # newer version of cucumber-rails. Consider adding your own code to a new file
 # instead of editing this one. Cucumber will automatically load all features/**/*.rb
 # files.
-
+ENV["RAILS_ROOT"] ||= File.expand_path(File.dirname(__FILE__) + '/../../testbed')
 require 'cucumber/rails'
 
-# Capybara defaults to CSS3 selectors rather than XPath.
-# If you'd prefer to use XPath, just uncomment this line and adjust any
-# selectors in your step definitions to use the XPath syntax.
-# Capybara.default_selector = :xpath
+# For Rails 3.0
+include Surveyor::Helpers::AssetPipeline
+
+# require File.expand_path(File.dirname(__FILE__) + '/../../testbed/config/environment.rb')
+# Capybara defaults to XPath selectors rather than Webrat's default of CSS3. In
+# order to ease the transition to Capybara we set the default here. If you'd
+# prefer to use XPath just remove this line and adjust any selectors in your
+# steps to use the XPath syntax.
+Capybara.default_selector = :css
 
 # By default, any exception happening in your Rails application will bubble up
 # to Cucumber so that your scenario will fail. This is a different from how
@@ -28,30 +33,24 @@ require 'cucumber/rails'
 #
 ActionController::Base.allow_rescue = false
 
-# Remove/comment out the lines below if your app doesn't have a database.
-# For some databases (like MongoDB and CouchDB) you may need to use :truncation instead.
-begin
-  DatabaseCleaner.strategy = :transaction
-rescue NameError
-  raise "You need to add database_cleaner to your Gemfile (in the :test group) if you wish to use it."
+# Use chrome for Selenium by default. This is because of Firefox's bug 566671
+# (https://bugzilla.mozilla.org/show_bug.cgi?id=566671): any test that relies on
+# blur or change events will not work when Firefox is in the background.
+ENV['SELENIUM_BROWSER'] ||= 'chrome'
+
+# Wait for AJAX requests to complete in selenium
+# n.b.: Capybara 2.0 will change the way this works.
+# http://groups.google.com/group/ruby-capybara/browse_thread/thread/6d955173ce413b0a/d0682d47a915dfbd
+Capybara.register_driver :selenium do |app|
+  SingleQuitSeleniumDriver.new(app, :browser => ENV['SELENIUM_BROWSER'].to_sym,
+    :resynchronize => true)
 end
 
-# You may also want to configure DatabaseCleaner to use different strategies for certain features and scenarios.
-# See the DatabaseCleaner documentation for details. Example:
-#
-#   Before('@no-txn,@selenium,@culerity,@celerity,@javascript') do
-#     # { :except => [:widgets] } may not do what you expect here
-#     # as Cucumber::Rails::Database.javascript_strategy overrides
-#     # this setting.
-#     DatabaseCleaner.strategy = :truncation
-#   end
-#
-#   Before('~@no-txn', '~@selenium', '~@culerity', '~@celerity', '~@javascript') do
-#     DatabaseCleaner.strategy = :transaction
-#   end
-#
+Before do |scenario|
+  Rails.logger.info "\n\nBeginning scenario #{scenario.file_colon_line} \"#{scenario.title}\""
+end
 
-# Possible values are :truncation and :transaction
-# The :transaction strategy is faster, but might give you threading problems.
-# See https://github.com/cucumber/cucumber-rails/blob/master/features/choose_javascript_database_strategy.feature
-Cucumber::Rails::Database.javascript_strategy = :truncation
+require "json_spec/cucumber"
+JsonSpec.configure do
+  exclude_keys "id", "created_at", "updated_at", "uuid", "modified_at", "completed_at"
+end

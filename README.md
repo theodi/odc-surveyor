@@ -1,187 +1,155 @@
+## Why surveyor?
 
-[![Build Status](https://img.shields.io/travis/theodi/open-data-certificate.svg)](https://travis-ci.org/theodi/open-data-certificate)
-[![Dependency Status](https://img.shields.io/gemnasium/theodi/open-data-certificate.svg)](https://gemnasium.com/theodi/open-data-certificate)
-[![Coverage Status](https://img.shields.io/coveralls/theodi/open-data-certificate.svg)](https://coveralls.io/r/theodi/open-data-certificate)
-[![Code Climate](https://img.shields.io/codeclimate/github/theodi/open-data-certificate.svg)](https://codeclimate.com/github/theodi/open-data-certificate)
-[![License](https://img.shields.io/github/license/theodi/open-data-certificate.svg)](http://theodi.mit-license.org/)
-[![Badges](https://img.shields.io/:badges-6/6-ff6799.svg)](https://github.com/badges/badgerbadgerbadger)
+Surveyor is a developer tool to deliver surveys in Rails applications.
+Surveys are written in the surveyor DSL (Domain Specific
+Language). A DSL makes it significantly easier to import long surveys
+(one of the motivations for building surveyor was copy/paste fatigue).
+It enables non-programmers to write out, edit, and review surveys.
 
-# Open Data Certificates
+If your Rails app needs to asks users questions as part of a survey, quiz,
+or questionnaire then you should consider using surveyor. This gem was
+designed to deliver clinical research surveys to large populations,
+but it can be used for any type of survey.
 
-This source code is for the ODI's Open Data Certificates app at [certificates.theodi.org](https://certificates.theodi.org).
-The online assessment tool allows publishers to assess how good their open data release is across technical, social, legal and other areas. When published, a certificate (which can be Bronze, Silver, Gold or Platinum) shows data reusers how much they can trust and rely on the dataset
+Surveyor is a Rails engine distributed as a ruby gem, meaning it is
+straightforward to override or extend its behaviors in your Rails app
+without maintaining a fork.
 
-## License
+## Requirements
 
-This code is open source under the MIT license. See [LICENSE.md](LICENSE.md) file for full details.
+Surveyor works with:
 
-## Summary of features
+* Ruby 1.8.7, 1.9.2, and 1.9.3
+* Rails 3.1-3.2
 
-Open Data Certificate is an online assessment tool for open data releases powered by Rails. 
+Some key dependencies are:
 
-Follow the [public feature roadmap for Open Data Certificates](https://trello.com/b/2xc7Q0kd/labs-public-toolbox-roadmap?menu=filter&filter=label:Certificates)
+* HAML
+* Sass
+* Formtastic
 
-## Development
+A more exhaustive list can be found in the [gemspec][].
 
-### Requirements
-ruby version 2.1.8
+[gemspec]: https://github.com/NUBIC/surveyor/blob/master/surveyor.gemspec
 
-### Environment variables
+## Install
 
-Some extra environment variables are required for the certificates site; these can be set in a .env file in the root of the project. The docker setup will create this file if it doesn't already exist.
+Add surveyor to your Gemfile:
 
-#### Required
+    gem "surveyor"
 
-```
-# A hostname to create links in emails
-CERTIFICATE_HOSTNAME="localhost:3000"
+Bundle, install, and migrate:
 
-# Redis server URL
-ODC_REDIS_SERVER_URL="redis://redis:6379"
-```
+    bundle install
+    script/rails generate surveyor:install
+    bundle exec rake db:migrate
 
-#### Optional
+Parse the "kitchen sink" survey ([kitchen sink](http://en.wiktionary.org/wiki/everything_but_the_kitchen_sink) means almost everything)
 
-The following extra are needed in production or for optional features:
+    bundle exec rake surveyor FILE=surveys/kitchen_sink_survey.rb
 
-```
-# Rackspace credentials for saving certificate dumps
-RACKSPACE_USERNAME
-RACKSPACE_API_KEY
-RACKSPACE_CERTIFICATE_DUMP_CONTAINER
+Start up your app, visit `/surveys`, compare what you see to [kitchen\_sink\_survey.rb][kitchensink] and try responding to the survey.
 
-# Juvia details to allow commenting
-JUVIA_BASE_URL
-CERTIFICATE_JUVIA_SITE_KEY
+[kitchensink]: http://github.com/NUBIC/surveyor/blob/master/lib/generators/surveyor/templates/surveys/kitchen_sink_survey.rb
 
-# Sending error reports to airbrake
-AIRBRAKE_CERTIFICATE_KEY
+## Customize surveyor
 
-# Enable footnotes for debugging info
-ENABLE_FOOTNOTES=true
-```
+Surveyor's controller, helper, models, and views may be overridden by classes in your `app` folder. To generate a sample custom controller and layout run:
 
-### Specific Development Notes
+    script/rails generate surveyor:custom
 
-### Development: Running the full application locally
+and read `surveys/EXTENDING\_SURVEYOR`
 
-#### With Docker
+## Upgrade
 
-The simplest way to get a certificates app up and running is under Docker.
+To get the latest version of surveyor, bundle, install and migrate:
 
-##### OSX 
+    bundle update surveyor
+    script/rails generate surveyor:install
+    bundle exec rake db:migrate
 
-1. Install [Docker Toolbox](https://www.docker.com/products/docker-toolbox)
-  * Set up a Docker host with `docker-machine start default` or run the Kitematic GUI.
-  * Make sure your terminal can talk to Docker
-    * either by opening the 'Docker Quikstart Terminal'
-    * or adding `eval $(docker-machine env default)` to your `.bashrc`
-2. Run `bin/dockerize`
-3. Make tea
-4. Everything should be set up and be open in your browser.
-5. Run `docker-compose run web bin/setup`
+and review the [changelog][] for changes that may affect your customizations.
 
-##### Linux
+[changelog]: https://github.com/NUBIC/surveyor/blob/master/CHANGELOG.md
 
-1. Install [docker-engine](https://docs.docker.com/engine/), [docker-compose](https://docs.docker.com/compose/overview/), and then [docker-machine](https://docs.docker.com/machine/overview/)
-2. Set up a Docker host with `docker-machine create -d virtualbox default`
-3. Run `bin/dockerize`
-4. Make tea
-5. Everything should be ready and the script will try to open the browser
-  * If it doesn't, hit ctrl-c and check all 4 containers are up with `docker-compose ps`
-  * Then point your browser to the address:port for the `opendatacertificate_web_1` container (likely `0.0.0.0:3000`)
-6. Run `docker-compose run web bin/setup`
+## Users of spork
 
-##### Without Docker
+There is [an issue with spork and custom inputs in formatstic (#851)][851]. A workaround (thanks rmm5t!):
 
-1. Install Ruby 2.1.8, and bundler.
-2. Install and run Redis and MySQL servers.
-3. Run `bin/setup` (generates `.env` file)
-4. edit the default config/database.yml #TODO with what?
-5. Run `bundle exec rails s`
+    Spork.prefork do
+      # ...
+      surveyor_path = Gem.loaded_specs['surveyor'].full_gem_path
+      Dir["#{surveyor_path}/app/inputs/*_input.rb"].each { |f| require File.basename(f) }
+      # ...
+    end
 
-If you're not using docker, ignore the `docker-compose run web` prefix on the commands below.
+[851]: https://github.com/justinfrench/formtastic/issues/851
 
-###### Known issues
+## Follow master
 
-eventmachine
-rubyracer
+If you are following pre-release versions of surveyor using a `:git`
+source in your Gemfile, be particularly careful about reviewing migrations after
+updating surveyor and re-running the generator. We will never change a migration
+between two released versions of surveyor. However, we may on rare occasions
+change a migration which has been merged into master. When this happens, you'll
+need to assess the differences and decide on an appropriate course of action for
+your app. If you aren't sure what this means, we do not recommend that you deploy an app
+that's locked to surveyor master into production.
 
-#### Application Configuration
+## Support
 
-##### Default Admin User
+For general discussion (e.g., "how do I do this?"), please send a message to the
+[surveyor-dev][] group. This group is moderated to keep out spam; don't be
+surprised if your message isn't posted immediately.
 
-Both of the above methods should set up your local app with a default admin user:
+For reproducible bugs, please file an issue on the [GitHub issue tracker][issues].
+Please include a minimal test case (a detailed description of
+how to trigger the bug in a clean rails application). If you aren't sure how to
+isolate the bug, send a message to [surveyor-dev][] with what you know and we'll
+try to help.
 
-* Username: `test@example.com`
-* Password: `testtest`
+For build status see our [continuous integration page][ci].
 
+Take a look at our [screencast][] (a bit dated now).
 
-##### Internationalisation
-    
-By default, only the UK survey is built in development, as building more can take a while.    
+[surveyor-dev]: https://groups.google.com/group/surveyor-dev
+[issues]: https://github.com/NUBIC/surveyor/issues
+[ci]:https://public-ci.nubic.northwestern.edu/job/surveyor/
+[screencast]:http://vimeo.com/7051279
 
-To build a specific country survey (AU used as an example):
+## Contribute, test
 
-    docker-compose run web bundle exec rake surveyor:build_changed_survey FILE=surveys/generated/surveyor/odc_questionnaire.AU.rb
+To work on the code, fork this github project. Install [bundler][] if
+you don't have it, then bundle, generate the app in `testbed`, and run the specs and features
 
-To build a few surveys:
+    $ bundle update
+    $ bundle exec rake testbed
+    $ bundle exec rake spec
+    $ bundle exec rake cucumber
 
-    docker-compose run web bundle exec rake surveyor:build_changed_surveys LIMIT=5
+[bundler]: http://gembundler.com/
 
-To build *all* the other surveys (remember, this can take a while):
+## Selenium
 
-    docker-compose run web bundle exec rake surveyor:build_changed_surveys
+Some of surveyor's integration tests use Selenium WebDriver and Capybara. The
+WebDriver-based tests default to running in Chrome due to an unfortunate
+[Firefox bug][FF566671]. For them to run, you'll either need:
 
-For information on how to translate and localise surveys, see below.
+* Chrome and [chromedriver][] installed, or
+* to switch to use Firefox instead
 
-#### Testing
+To use Firefox instead of Chrome, invoke one or more features with
+`SELENIUM_BROWSER` set in the environment:
 
-To run tests:
+    $ SELENIUM_BROWSER=firefox bundle exec rake cucumber
+    $ SELENIUM_BROWSER=firefox bundle exec cucumber features/ajax_submissions.feature
 
-    docker-compose run web bundle exec rake test
+Note that when running features in Firefox, you must allow the WebDriver-driven
+Firefox to retain focus, otherwise some tests will fail.
 
-You can also run tests continuously whenever a file is changed:
+[FF566671]: https://bugzilla.mozilla.org/show_bug.cgi?id=566671
+[chromedriver]: http://code.google.com/p/selenium/wiki/ChromeDriver
 
-    docker-compose run web bundle exec guard
+Copyright (c) 2008-2013 Brian Chamberlain and Mark Yoon, released under the [MIT license][mit]
 
-### API
-
-Certificates can be created and updated using a JSON API. See the [API documentation](doc/api.md) for details.
-
-### Application Functionality
-
-#### Admin functions
-
-To mark a user as being an admin use the rails console to set the `admin` field to true. The easiest way to find the ID is to look on the URL of their account page.
-
-    User.find(<id>).update_attributes(admin: true)
-
-Admins are able to block a dataset from displaying on the public /datasets page by visiting the dataset and toggling the visibility at the top of the page.
-
-Removed datasets are listed at `/datasets/admin` (only accessible by admin users).
-
-#### Autocompletion
-
-The survey attempts to fetch answers from the documentation URL and fill them into the questionnaire. These answers are marked as autocompleted.
-
-Surveys can be autocompleted if the pages machine-readable metadata in the following formats:
-
-- DCAT
-- Datapackage
-- CKAN
-
-Some examples of URLS that can be autocompleted:
-
-- http://data.gov.uk/dataset/overseas_travel_and_tourism
-- http://data.gov.uk/dataset/apprenticeship-success-rates-in-england-2011-2012
-- http://data.ordnancesurvey.co.uk/datasets/50k-gazetteer
-- http://data.ordnancesurvey.co.uk/datasets/boundary-line
-- http://smtm.labs.theodi.org/download/
-
-### Additional documentation
-
-[App approach document](https://docs.google.com/a/whiteoctober.co.uk/document/d/1Ot91x1enq9TW7YKpePytE-wA0r8l9dmNQLVi16ph-zg/edit#)
-
-The original prototype has been moved to [/prototype](https://github.com/theodi/open-data-certificate/tree/master/prototype).
-
+[mit]: https://github.com/NUBIC/surveyor/blob/master/MIT-LICENSE
